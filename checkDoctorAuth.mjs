@@ -1,5 +1,3 @@
-// index.mjs
-
 /**
  * Lambda Authorizer ESM – zero‑dependency
  * header: Authorization: "Bearer <JWT>"
@@ -30,16 +28,29 @@ export const handler = async (event) => {
   return generatePolicy(principalId, effect, event.methodArn);
 };
 
-function generatePolicy(principalId, effect, resource) {
+/**
+ * Generate an IAM policy with wildcard resources under /doctor/*
+ */
+function generatePolicy(principalId, effect, methodArn) {
+  // methodArn format: arn:aws:execute-api:{region}:{account}:{apiId}/{stage}/{httpVerb}/{resourcePath}
+  const arnParts = methodArn.split('/');
+  const apiArnRoot = arnParts[0];             // arn:aws:execute-api:...:apiId
+  const stage = arnParts[1];                  // e.g., "dev"
+
+  // Allow any HTTP method (*) under the /doctor path
+  const resourceWildcard = `${apiArnRoot}/${stage}/*/doctor/*`;
+
   return {
     principalId,
     policyDocument: {
       Version: '2012-10-17',
-      Statement: [{
-        Action: 'execute-api:Invoke',
-        Effect: effect,
-        Resource: resource
-      }]
+      Statement: [
+        {
+          Action: 'execute-api:Invoke',
+          Effect: effect,
+          Resource: [ resourceWildcard ]
+        }
+      ]
     }
   };
 }
