@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 
 # Configurazione da env vars
 STATE_MACHINE_ARN = os.environ.get('STATE_MACHINE_ARN')
-DDB_TABLE_NAME    = os.environ.get('DDB_TABLE_NAME')
+IOT_PATIENT_TABLE    = os.environ.get('IOT_PATIENT_TABLE')
 
 def lambda_handler(event, context):
     logger.debug(">>> ENTER LAMBDA HANDLER <<<")
@@ -47,7 +47,7 @@ def lambda_handler(event, context):
     # 4. Interroga DynamoDB per age, patientId e sex (low-level client)
     try:
         resp = dynamo.get_item(
-            TableName=DDB_TABLE_NAME,
+            TableName=IOT_PATIENT_TABLE,
             Key={'deviceId': {'S': device_id}}
         )
     except ClientError as e:
