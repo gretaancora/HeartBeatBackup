@@ -1,18 +1,25 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-// Environment variable for DynamoDB table
+// Environment variable per la tabella DynamoDB
 const DDB_TABLE_NAME = process.env.DDB_TABLE_NAME;
 if (!DDB_TABLE_NAME) {
   throw new Error("Missing required env var: DDB_TABLE_NAME");
 }
 
-// Initialize DynamoDB client
+// Inizializza client DynamoDB
 const ddbClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
+// Header CORS condivisi
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+};
+
 /**
- * Parse a JWT token payload without external dependencies
+ * Parse un JWT token senza dipendenze esterne
  */
 function parseJwt(token) {
   const parts = token.split('.');
@@ -23,7 +30,7 @@ function parseJwt(token) {
 }
 
 /**
- * Normalize input entries: accept single object or array of objects
+ * Normalizza gli input: accetta oggetto singolo o array
  */
 function normalizeEntries(body) {
   if (Array.isArray(body)) return body;
@@ -31,19 +38,29 @@ function normalizeEntries(body) {
   throw new Error('Request body must be an object or array of objects');
 }
 
-/**
- * Lambda handler for adding device entries linked to a patient
- */
 export const handler = async (event) => {
   console.info('Received event', JSON.stringify(event));
 
-  // Validate auth header
-  const authHeader = event.headers?.authorization || event.headers?.Authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) };
+  // Rispondi subito al preflight CORS
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: CORS_HEADERS,
+      body: ''
+    };
   }
 
-  // Extract patientId from JWT
+  // Controllo Authorization header
+  const authHeader = event.headers?.authorization || event.headers?.Authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return {
+      statusCode: 401,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
+  // Estrai patientId dal JWT
   let patientId;
   try {
     const token = authHeader.slice(7);
@@ -52,20 +69,28 @@ export const handler = async (event) => {
     if (!patientId) throw new Error('Username claim missing');
   } catch (err) {
     console.error('Token parse error', err);
-    return { statusCode: 400, body: JSON.stringify({ message: 'Invalid token' }) };
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ message: 'Invalid token' })
+    };
   }
 
-  // Parse and normalize body entries
+  // Parsing e normalizzazione del body
   let entries;
   try {
     const parsed = JSON.parse(event.body || '{}');
     entries = normalizeEntries(parsed);
   } catch (err) {
     console.error('Body parse error', err);
-    return { statusCode: 400, body: JSON.stringify({ message: 'Invalid JSON body or format' }) };
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ message: 'Invalid JSON body or format' })
+    };
   }
 
-  // Process each entry
+  // Processa ogni entry
   const results = [];
   for (const entry of entries) {
     const { deviceId, age, sex } = entry;
@@ -86,8 +111,10 @@ export const handler = async (event) => {
     }
   }
 
+  // Restituisci il risultato includendo gli header CORS
   return {
     statusCode: 200,
-    body: JSON.stringify({ message: 'Processed entries', results }),
+    headers: CORS_HEADERS,
+    body: JSON.stringify({ message: 'Processed entries', results })
   };
 };
