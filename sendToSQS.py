@@ -6,7 +6,7 @@ import boto3
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # Initialize AWS clients
 dynamo = boto3.client('dynamodb')
@@ -24,14 +24,25 @@ def lambda_handler(event, context):
     AWS Lambda handler: process IoT Core MQTT payload,
     lookup clientId in DynamoDB, and forward to SQS FIFO.
     """
+    # DEBUG A TUTTO SCHERMO
+    print(">>> ENTER LAMBDA HANDLER <<<")
+    logger.error(">>> ENTER LAMBDA HANDLER <<<")
+ 
+    # Log del payload raw
+    logger.error(f"Raw event all’inizio: {json.dumps(event)}")
     try:
         # 1) Extract payload
         payload = event
         device_id = payload.get('deviceId')
         ts = payload.get('ts')
+        bpm_values = payload.get('bpm')
+        if bpm_values is None:
+            # log di debug con tutte le chiavi
+            logger.error(f"DEBUG: chiavi trovate in event: {list(event.keys())}")
+            raise ValueError("bpm non settato correttamente")
         if not device_id or ts is None:
             raise ValueError("Invalid payload: 'deviceId' or 'ts' missing")
-        logger.info(f"Payload received: deviceId={device_id}, ts={ts}")
+        logger.info(f"Payload received: deviceId={device_id}, ts={ts}, bpm_values={bpm_values}")
 
         # 2) DynamoDB lookup
         resp = dynamo.get_item(
@@ -48,7 +59,7 @@ def lambda_handler(event, context):
             "patientId": patient_id,
             "deviceId": device_id,
             "ts": ts,
-            "payload": payload
+            "bpm_values": bpm_values
         }
 
         # 4) Send message to SQS FIFO
@@ -64,13 +75,15 @@ def lambda_handler(event, context):
             MessageGroupId=device_id,
             MessageDeduplicationId=str(ts)
         )
+        logger.info(f"Message payload: {json.dumps(event)}")
         logger.info(f"Sent to SQS: MessageId={send_resp.get('MessageId')}")
 
         return {
             "status": "sent",
             "patientId": patient_id,
             "deviceId": device_id,
-            "ts": ts
+            "ts": ts,
+            "bpm_values": bpm_values
         }
 
     except Exception as e:
