@@ -1,16 +1,21 @@
 import os
 import json
 import boto3
+import logging
 from botocore.exceptions import ClientError
 
 # Client AWS
 dynamo = boto3.client('dynamodb')
 sfn    = boto3.client('stepfunctions')
 
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
 # Configurazione da env vars
-IOTPATIENT_TABLE        = os.environ.get('IOTPATIENT_TABLE', '')
+IOTPATIENT_TABLE        = os.environ.get('IOTPATIENT_TABLE')
 # ARN della State Machine di AWS Step Functions (stessa per tutti i dispositivi)
-STATE_MACHINE_ARN       = os.environ.get('STATE_MACHINE_ARN', '')
+STATE_MACHINE_ARN       = os.environ.get('STATE_MACHINE_ARN')
 
 
 def lambda_handler(event, context):
@@ -38,6 +43,11 @@ def lambda_handler(event, context):
       ]
     }
     """
+    print(">>> ENTER LAMBDA HANDLER <<<")
+    logger.error(">>> ENTER LAMBDA HANDLER <<<")
+ 
+    # Log del payload raw
+    logger.error(f"Raw event all’inizio: {json.dumps(event)}")
     results = []
 
     # Verifica ARN State Machine
@@ -91,7 +101,7 @@ def lambda_handler(event, context):
 
             # Aggiungi al risultato solo i campi richiesti
             results.append({
-                'patient_id': patient_id,
+                'patientId': patient_id,
                 'bpm_values': bpm_values,
                 'age': age,
                 'sex': sex,
