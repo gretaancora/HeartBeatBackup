@@ -23,6 +23,12 @@ Passi:
 	+ per le funzioni checkPatientGroupAuth, checkDoctorGroupAuth e checkAdminGroupAuth in SourceArn: "arn:aws:execute-api:us-east-1:832059618623:868ccyrv02/authorizers/w9sbec" 
 	  sostituire a 832059618623 il proprio id, a 868ccyrv02 l'id dell'api e a w9sbec l'id dell'autorizzazione dello specifico authorizer
 12. creare stack con nuove risorse da template heart beat in cloudformation
+13. aggiungere manualmente trigger s3 per la funziona lambda splitBatchData -> 
+	+ su splitBatchData cliccare pulsante "aggiungi trigger"
+	+ selezionare s3
+	+ selezionare bucket "batchdataheartbeatcopy"
+	+ selezionare tipo di evento PUT
+	+ accettare utilizzo bucket s3 sia per input che per output
 13. modificare l'http delle chiamate ad api gateway negli html
 14. inserire gli html nel bucket di forntend, selezionarli tutti e tramite operazioni rendere tutte le schermate pubbliche utilizzando acl
 15. se si vuole testare lo script streamingMQTT.py
